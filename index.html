@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whitelist Generator</title>
+    <style>
+        :root {
+            --color-bg: #0A0A0E;
+            --color-surface: rgba(18, 18, 22, 0.5);
+            --color-surface-border: rgba(255, 255, 255, 0.05);
+            --color-primary: #00f2a1;
+            --color-secondary: #00c6ff;
+            --rgb-primary: 0, 242, 161;
+            --color-text: #EAEAEA;
+            --color-text-muted: #888890;
+            --color-error: #ff7b7b;
+            --font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --border-radius: 18px;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        /* --- Background Effects --- */
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 20% 20%, var(--color-primary), transparent 30%),
+                        radial-gradient(circle at 80% 80%, var(--color-secondary), transparent 30%);
+            opacity: 0.1; z-index: -2;
+            animation: pan-background 40s infinite alternate ease-in-out;
+        }
+        body::after {
+            content: ''; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
+            z-index: -1;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.025; animation: move-noise 1s steps(2) infinite;
+        }
+        @keyframes pan-background {
+            from { transform: scale(1.5) translate(0, 0); } to { transform: scale(1.5) translate(-10%, 5%); }
+        }
+        @keyframes move-noise {
+            from { transform: translate(0, 0); } to { transform: translate(-25%, -25%); }
+        }
+
+        /* --- Main Layout & Card --- */
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .input-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-surface-border);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            position: relative;
+            box-shadow: 0 40px 80px -20px rgba(0,0,0,0.4);
+            transition: padding-bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* --- Sections that appear inside the card --- */
+        .output-section {
+            display: none; /* Hidden by default */
+            margin-top: 32px;
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Content Styling --- */
+        h1 {
+            font-size: 2.5rem; font-weight: 700; margin-bottom: 8px;
+            background: linear-gradient(90deg, var(--color-text), var(--color-text-muted));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        p { font-size: 1rem; color: var(--color-text-muted); line-height: 1.6; }
+        
+        textarea {
+            width: 100%; min-height: 120px; padding: 16px; margin-top: 24px;
+            font-family: 'Consolas', 'Monaco', monospace; font-size: 1rem;
+            background-color: rgba(0,0,0,0.3);
+            border: 1px solid var(--color-surface-border);
+            border-radius: 12px; color: var(--color-text);
+            resize: vertical; transition: all 0.3s ease;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: rgba(var(--rgb-primary), 0.5);
+            box-shadow: 0 0 0 4px rgba(var(--rgb-primary), 0.1);
+        }
+
+        .generate-btn {
+            width: 100%; padding: 16px 20px; margin-top: 20px; font-size: 1.1rem; font-weight: 600;
+            color: #000; background: var(--color-primary);
+            border: none; border-radius: 12px; cursor: pointer;
+            display: flex; justify-content: center; align-items: center; gap: 12px;
+            position: relative; overflow: hidden;
+            transition: transform 0.2s cubic-bezier(.34,1.56,.64,1);
+        }
+        .generate-btn:hover:not(:disabled) { transform: scale(1.05); }
+        .generate-btn::before {
+            content: ''; position: absolute; top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(100deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: transform 0.5s ease;
+        }
+        .generate-btn:hover:not(:disabled)::before { transform: translateX(200%); }
+        .generate-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
+
+        /* Output Content Styling */
+        h2 { font-size: 1.25rem; margin-bottom: 16px; }
+        .code-block {
+            background-color: rgba(0,0,0,0.4); border-radius: 12px; padding: 16px;
+            max-height: 250px; overflow-y: auto;
+            border: 1px solid var(--color-surface-border);
+        }
+        pre, code { font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; white-space: pre-wrap; word-wrap: break-word; }
+
+        .error-list { padding: 16px; background-color: rgba(255, 123, 123, 0.05); border-radius: 12px; border: 1px solid rgba(255, 123, 123, 0.1); }
+        .error-list h3 { color: var(--color-error); }
+        .error-list ul {
+            list-style-type: disc; 
+            padding-left: 20px; 
+            margin-top: 8px;
+        }
+        .error-list li { padding: 2px 0; color: var(--color-text-muted); }
+        
+        .action-buttons { display: flex; gap: 12px; margin-top: 20px; }
+        .action-btn {
+            flex-grow: 1; 
+            flex-basis: 0; 
+            padding: 10px 12px; font-size: 0.9rem; font-weight: 600; border-radius: 10px;
+            cursor: pointer; border: 1px solid var(--color-surface-border);
+            background-color: rgba(255, 255, 255, 0.05); color: var(--color-text-muted);
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+            transition: transform 0.2s cubic-bezier(.34,1.56,.64,1), background-color 0.2s ease, color 0.2s ease;
+        }
+        .action-btn:hover { background-color: rgba(255, 255, 255, 0.1); color: var(--color-text); transform: scale(1.05); }
+
+        .loader { width: 22px; height: 22px; border: 3px solid rgba(0,0,0,0.4); border-top-color: #000; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .log-console {
+            background-color: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 16px;
+            max-height: 180px;
+            overflow-y: auto;
+            border: 1px solid var(--color-surface-border);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .log-console .log-entry { white-space: pre-wrap; word-break: break-all; }
+        .log-console .log-success { color: var(--color-primary); }
+        .log-console .log-warning { color: #ffcc00; }
+        .log-console .log-error   { color: var(--color-error); }
+        .log-console .log-info    { color: var(--color-text-muted); }
+    </style>
+</head>
+<body>
+    
+    <div class="container" id="main-container">
+        <div class="input-card" id="input-card">
+            <h1>Whitelist Generator</h1>
+            <p>Enter Minecraft usernames, separated by commas, to generate a `whitelist.json` file.</p>
+            <textarea id="usernames" placeholder="Notch, MbappeFartBubble, Herobrine..."></textarea>
+            <button id="generate-btn" class="generate-btn magnetic-element">
+                <span id="btn-text">Generate</span>
+                <div id="loader" class="loader" style="display: none;"></div>
+            </button>
+            
+            <section id="log-section" class="output-section">
+                <h2>Processing Log</h2>
+                <div id="log-output" class="log-console"></div>
+            </section>
+            
+            <section id="status" class="output-section"></section>
+            <section id="results-area" class="output-section">
+                <h2>Generated JSON</h2>
+                <div class="code-block">
+                    <pre><code id="json-output"></code></pre>
+                </div>
+                <div class="action-buttons">
+                    <button id="copy-btn" class="action-btn magnetic-element">Copy</button>
+                    <button id="download-btn" class="action-btn magnetic-element">Download</button>
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Audio Setup ---
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const sounds = {
+                click: new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"),
+                swoosh: new Audio("data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAD//w=="),
+                success: new Audio("data:audio/wav;base64,UklGRkIAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhPAAAAP////8AAP+/+f/9/+8A/v/tAP7/6QD9/+YA/v/jAP3/3AD+f9oA/n/VAP5/0gD9f8wA/H/HAPx/wgD8f70A/H+5APx/tQD8f68A/H+qAPx/pwD8f6QA/H+fAPx/nAD8f5sA/H+ZAPx/lQD8f5MA/H+QAPx/ngD8f5wA/H+bAPx/mAD8f5QA/H+SAPx/kAD8f5AA/H+QAPx/kAD8f5AA/H+QAPx/kAD8f5AA/H+QAPx/kAD8f5A="),
+            };
+            const playSound = (sound) => {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                sounds[sound]?.play().catch(e => console.error("Error playing sound:", e));
+            };
+
+            // --- UI Elements ---
+            const usernamesInput = document.getElementById('usernames');
+            const generateBtn = document.getElementById('generate-btn');
+            const btnText = document.getElementById('btn-text');
+            const loader = document.getElementById('loader');
+            
+            const logSection = document.getElementById('log-section');
+            const logOutput = document.getElementById('log-output');
+            const statusDiv = document.getElementById('status');
+            const resultsArea = document.getElementById('results-area');
+            const jsonOutput = document.getElementById('json-output');
+            const copyBtn = document.getElementById('copy-btn');
+            const downloadBtn = document.getElementById('download-btn');
+
+            // --- API Endpoints ---
+            const ASHCON_API_URL = 'https://api.ashcon.app/mojang/v2/user/';
+            const PLAYERDB_API_URL = 'https://playerdb.co/api/player/minecraft/';
+            const MCAPI_COM_URL = 'https://minecraft-api.com/api/uuid/';
+            const MINETOOLS_API_URL = 'https://api.minetools.eu/uuid/';
+            
+            // --- Magnetic Effect ---
+            document.querySelectorAll('.magnetic-element').forEach(el => {
+                el.addEventListener('mousemove', function(e) {
+                    const rect = this.getBoundingClientRect();
+                    const x = e.clientX - (rect.left + rect.width / 2);
+                    const y = e.clientY - (rect.top + rect.height / 2);
+                    this.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px)`;
+                });
+                el.addEventListener('mouseleave', function(e) {
+                    this.style.transform = 'translate(0px, 0px)';
+                });
+            });
+
+            // --- Core Logic ---
+            const logMessage = (message, type = 'info') => {
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+                entry.textContent = message;
+                logOutput.appendChild(entry);
+                logOutput.scrollTop = logOutput.scrollHeight;
+            };
+
+            const handleGenerate = async () => {
+                playSound('click');
+                if (!usernamesInput.value.trim()) {
+                    showError("Please enter at least one username.");
+                    return;
+                }
+                const usernames = usernamesInput.value.trim().split(',').map(name => name.trim()).filter(Boolean);
+                
+                setLoading(true);
+                clearPreviousResults();
+                
+                logSection.style.display = 'block';
+                logMessage(`Starting generation for ${usernames.length} username(s)...`, 'info');
+
+                const validUsersMap = new Map();
+                const invalidUsernames = [];
+
+                for (const username of usernames) {
+                    try {
+                        const user = await fetchUser(username);
+                        validUsersMap.set(user.uuid, user);
+                    } catch (failedUsername) {
+                        invalidUsernames.push(failedUsername);
+                    }
+                }
+                
+                logMessage('... All usernames processed.', 'info');
+
+                const validUsers = Array.from(validUsersMap.values());
+
+                if (invalidUsernames.length > 0) {
+                    displayInvalidUsers(invalidUsernames);
+                }
+                if (validUsers.length > 0) {
+                    displayWhitelist(validUsers);
+                    playSound('success');
+                } else if (invalidUsernames.length === 0) {
+                    showError("No valid Minecraft users were found.");
+                }
+
+                setLoading(false);
+            };
+            
+            // --- CHANGED: Restructured the entire fetch logic for maximum robustness ---
+            const fetchUser = (username) => {
+                return new Promise(async (resolve, reject) => {
+                    if (!/^[a-zA-Z0-9_]{3,16}$/.test(username)) {
+                        logMessage(`✖ Invalid username format: "${username}"`, 'error');
+                        return reject(username);
+                    }
+                    logMessage(`- Fetching UUID for ${username}...`, 'info');
+
+                    // --- Attempt 1: Ashcon API ---
+                    try {
+                        const response = await fetch(`${ASHCON_API_URL}${username}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data && data.uuid && data.username) {
+                                logMessage(`✔ Success for ${username} (Ashcon API)`, 'success');
+                                return resolve({ uuid: data.uuid, name: data.username });
+                            }
+                        }
+                        throw new Error('Ashcon API failed or returned invalid data');
+                    } catch (error) {
+                        logMessage(`! Ashcon failed. Trying PlayerDB...`, 'warning');
+                    }
+
+                    // --- Attempt 2: PlayerDB API ---
+                    try {
+                        const response = await fetch(`${PLAYERDB_API_URL}${username}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.success && data.data.player) {
+                                const player = data.data.player;
+                                logMessage(`✔ Success for ${player.username} (PlayerDB API)`, 'success');
+                                return resolve({ uuid: player.id, name: player.username });
+                            }
+                        }
+                        throw new Error('PlayerDB API failed or returned invalid data');
+                    } catch (error) {
+                        logMessage(`! PlayerDB failed. Trying Minecraft-API.com...`, 'warning');
+                    }
+                    
+                    // --- Attempt 3: Minecraft-API.com (New) ---
+                    try {
+                        const response = await fetch(`${MCAPI_COM_URL}${username}/json`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data && data.uuid) {
+                                const uuidWithDashes = data.uuid.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
+                                // This API doesn't return the correctly cased username, so we use the input. The UUID is what matters.
+                                logMessage(`✔ Success for ${username} (Minecraft-API.com)`, 'success');
+                                return resolve({ uuid: uuidWithDashes, name: username });
+                            }
+                        }
+                        throw new Error('Minecraft-API.com failed or user not found.');
+                    } catch (error) {
+                         logMessage(`! Minecraft-API.com failed. Trying MineTools...`, 'warning');
+                    }
+
+                    // --- Attempt 4: MineTools API (Final Fallback) ---
+                    try {
+                        const response = await fetch(`${MINETOOLS_API_URL}${username}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data && data.id && data.name && data.status === 'OK') {
+                                const uuidWithDashes = data.id.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
+                                logMessage(`✔ Success for ${username} (MineTools API)`, 'success');
+                                return resolve({ uuid: uuidWithDashes, name: data.name });
+                            }
+                        }
+                        throw new Error('MineTools API failed or returned invalid data');
+                    } catch (error) {
+                        // This is the final failure point
+                    }
+                    
+                    logMessage(`✖ All APIs failed to find UUID for ${username}`, 'error');
+                    reject(username);
+                });
+            };
+            
+            const displayWhitelist = (users) => {
+                jsonOutput.textContent = JSON.stringify(users, null, 2);
+                resultsArea.style.display = 'block';
+                playSound('swoosh');
+            };
+
+            const displayInvalidUsers = (usernames) => {
+                const listItems = usernames.map(name => `<li>${name}</li>`).join('');
+                statusDiv.innerHTML = `<div class="error-list"><h3>Could not find the following users:</h3><ul>${listItems}</ul></div>`;
+                statusDiv.style.display = 'block';
+                playSound('swoosh');
+            };
+            
+            const showError = (message) => {
+                 statusDiv.innerHTML = `<div class="error-list"><h3>Error</h3><p>${message}</p></div>`;
+                 statusDiv.style.display = 'block';
+                 playSound('swoosh');
+            };
+
+            const clearPreviousResults = () => {
+                statusDiv.style.display = 'none';
+                statusDiv.innerHTML = '';
+                resultsArea.style.display = 'none';
+                logSection.style.display = 'none';
+                logOutput.innerHTML = '';
+                copyBtn.textContent = 'Copy';
+            };
+
+            const setLoading = (isLoading) => {
+                generateBtn.disabled = isLoading;
+                btnText.style.display = isLoading ? 'none' : 'inline-block';
+                loader.style.display = isLoading ? 'block' : 'none';
+            };
+
+            const handleCopy = () => {
+                playSound('click');
+                if (!jsonOutput.textContent) return;
+                navigator.clipboard.writeText(jsonOutput.textContent).then(() => {
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                });
+            };
+            
+            const handleDownload = () => {
+                playSound('click');
+                if (!jsonOutput.textContent) return;
+                const blob = new Blob([jsonOutput.textContent], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'whitelist.json';
+                a.click(); URL.revokeObjectURL(url); a.remove();
+            };
+
+            generateBtn.addEventListener('click', handleGenerate);
+            copyBtn.addEventListener('click', handleCopy);
+            downloadBtn.addEventListener('click', handleDownload);
+        });
+    </script>
+</body>
+</html>
