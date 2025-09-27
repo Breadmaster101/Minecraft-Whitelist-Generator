@@ -38,7 +38,6 @@
             padding: 24px;
         }
 
-        /* --- Background Effects --- */
         body::before {
             content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at 20% 20%, var(--color-primary), transparent 30%),
@@ -59,7 +58,6 @@
             from { transform: translate(0, 0); } to { transform: translate(-25%, -25%); }
         }
 
-        /* --- Main Layout & Card --- */
         .container {
             width: 100%;
             max-width: 600px;
@@ -77,9 +75,8 @@
             transition: padding-bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* --- Sections that appear inside the card --- */
         .output-section {
-            display: none; /* Hidden by default */
+            display: none;
             margin-top: 32px;
             animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
@@ -88,7 +85,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* --- Content Styling --- */
         h1 {
             font-size: 2.5rem; font-weight: 700; margin-bottom: 8px;
             background: linear-gradient(90deg, var(--color-text), var(--color-text-muted));
@@ -128,7 +124,6 @@
         .generate-btn:hover:not(:disabled)::before { transform: translateX(200%); }
         .generate-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
 
-        /* Output Content Styling */
         h2 { font-size: 1.25rem; margin-bottom: 16px; }
         .code-block {
             background-color: rgba(0,0,0,0.4); border-radius: 12px; padding: 16px;
@@ -214,7 +209,6 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- Audio Setup ---
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const sounds = {
                 click: new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"),
@@ -226,7 +220,6 @@
                 sounds[sound]?.play().catch(e => console.error("Error playing sound:", e));
             };
 
-            // --- UI Elements ---
             const usernamesInput = document.getElementById('usernames');
             const generateBtn = document.getElementById('generate-btn');
             const btnText = document.getElementById('btn-text');
@@ -240,13 +233,11 @@
             const copyBtn = document.getElementById('copy-btn');
             const downloadBtn = document.getElementById('download-btn');
 
-            // --- API Endpoints ---
             const ASHCON_API_URL = 'https://api.ashcon.app/mojang/v2/user/';
             const PLAYERDB_API_URL = 'https://playerdb.co/api/player/minecraft/';
             const MCAPI_COM_URL = 'https://minecraft-api.com/api/uuid/';
             const MINETOOLS_API_URL = 'https://api.minetools.eu/uuid/';
             
-            // --- Magnetic Effect ---
             document.querySelectorAll('.magnetic-element').forEach(el => {
                 el.addEventListener('mousemove', function(e) {
                     const rect = this.getBoundingClientRect();
@@ -259,7 +250,6 @@
                 });
             });
 
-            // --- Core Logic ---
             const logMessage = (message, type = 'info') => {
                 const entry = document.createElement('div');
                 entry.className = `log-entry log-${type}`;
@@ -311,7 +301,6 @@
                 setLoading(false);
             };
             
-            // --- CHANGED: Restructured the entire fetch logic for maximum robustness ---
             const fetchUser = (username) => {
                 return new Promise(async (resolve, reject) => {
                     if (!/^[a-zA-Z0-9_]{3,16}$/.test(username)) {
@@ -320,7 +309,6 @@
                     }
                     logMessage(`- Fetching UUID for ${username}...`, 'info');
 
-                    // --- Attempt 1: Ashcon API ---
                     try {
                         const response = await fetch(`${ASHCON_API_URL}${username}`);
                         if (response.ok) {
@@ -335,7 +323,6 @@
                         logMessage(`! Ashcon failed. Trying PlayerDB...`, 'warning');
                     }
 
-                    // --- Attempt 2: PlayerDB API ---
                     try {
                         const response = await fetch(`${PLAYERDB_API_URL}${username}`);
                         if (response.ok) {
@@ -351,14 +338,12 @@
                         logMessage(`! PlayerDB failed. Trying Minecraft-API.com...`, 'warning');
                     }
                     
-                    // --- Attempt 3: Minecraft-API.com (New) ---
                     try {
                         const response = await fetch(`${MCAPI_COM_URL}${username}/json`);
                         if (response.ok) {
                             const data = await response.json();
                             if (data && data.uuid) {
                                 const uuidWithDashes = data.uuid.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
-                                // This API doesn't return the correctly cased username, so we use the input. The UUID is what matters.
                                 logMessage(`✔ Success for ${username} (Minecraft-API.com)`, 'success');
                                 return resolve({ uuid: uuidWithDashes, name: username });
                             }
@@ -368,7 +353,6 @@
                          logMessage(`! Minecraft-API.com failed. Trying MineTools...`, 'warning');
                     }
 
-                    // --- Attempt 4: MineTools API (Final Fallback) ---
                     try {
                         const response = await fetch(`${MINETOOLS_API_URL}${username}`);
                         if (response.ok) {
@@ -381,7 +365,6 @@
                         }
                         throw new Error('MineTools API failed or returned invalid data');
                     } catch (error) {
-                        // This is the final failure point
                     }
                     
                     logMessage(`✖ All APIs failed to find UUID for ${username}`, 'error');
